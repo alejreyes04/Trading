@@ -1,0 +1,12 @@
+# RegimeScanner v2.1 — dependencias Python
+# Rutas de entrenamiento:
+#   forward (sklearn):  train_regime_onnx.py
+#   destilación (KL):   label_regime_hmm.py + distill_regime_kl.py
+numpy>=1.23
+pandas>=1.5
+scikit-learn>=1.2
+skl2onnx>=1.14        # ruta forward (sklearn -> ONNX)
+onnx>=1.14
+onnxruntime>=1.16     # verificación del contrato ONNX sin MT5
+hmmlearn>=0.3         # teacher HMM (label_regime_hmm.py)
+torch>=2.0            # student destilado (distill_regime_kl.py)

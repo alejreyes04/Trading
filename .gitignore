@@ -1,0 +1,14 @@
+# Artefactos de entrenamiento / inferencia (no versionar: son por símbolo/TF)
+*.onnx
+regime_features.csv
+regime_labeled.csv
+golden_vectors.txt
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# MetaTrader compilados
+*.ex5
