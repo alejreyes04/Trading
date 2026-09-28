@@ -25,7 +25,7 @@ def test_majors_trend_selection():
 
 def test_variant_settings_override(settings):
     s2 = variant_settings(settings, VARIANTS["v2c"])
-    assert s2.trade.stop_atr == 3.0 and s2.trade.max_holding_days == 90 and s2.trade.take_profit_atr > 1e5
+    assert s2.trade.stop_atr == 3.0 and s2.trade.max_holding_days == 90 and s2.trade.take_profit_atr is None
     assert settings.trade.stop_atr == 2.0          # los ajustes originales no cambian
 
 

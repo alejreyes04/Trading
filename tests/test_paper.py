@@ -76,3 +76,8 @@ def test_ledger_roundtrip(tmp_path):
     led.save()
     again = Ledger("Q", root=tmp_path).trades[0]
     assert again.entry_price == 10.0 and again.llm_prob == 0.55 and again.closed_at is None and again.notes == ""
+
+
+def test_no_target_never_exits_on_target(settings):
+    t = trade(tp_price=float("inf"))
+    assert check_exit(t, candles([[10, 50, 9.8, 12]]), settings) is None

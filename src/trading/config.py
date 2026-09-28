@@ -53,7 +53,7 @@ class Signals(BaseModel):
 class Trade(BaseModel):
     atr_period: int
     stop_atr: float
-    take_profit_atr: float
+    take_profit_atr: float | None     # None = sin objetivo (p. ej. V2C)
     max_holding_days: int
     reentry_cooldown_days: int
 

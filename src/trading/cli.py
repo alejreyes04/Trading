@@ -1,12 +1,13 @@
 """Línea de comandos: python -m trading <comando>.
 
-  scan                 escáner cuant + carteras automáticas (Q, RND) + brief para agentes
+  scan                 escáner cuant + carteras automáticas (Q, RND, V2C) + brief para agentes
   decide [--run DIR]   aplica decisiones del agente, riesgo y propuestas reales; genera el informe
   monitor              vigilancia: salidas, órdenes pendientes y alertas
   validate TIPO FICH   valida context.json o decisions.json
   weekly               informe semanal de evaluación
   backtest             backtest histórico de la parte cuant
   status               resumen de carteras
+  research             evalúa las variantes pre-registradas (research/hypotheses.md)
 """
 
 from __future__ import annotations
@@ -133,12 +134,12 @@ def main(argv: list[str] | None = None) -> int:
     if args.cmd == "status":
         from trading.config import load_settings
         from trading.data.bitvavo import Bitvavo
-        from trading.ledger import Ledger
+        from trading.ledger import PORTFOLIOS, Ledger
         from trading.pipeline import capital_for
 
         settings = load_settings()
         marks = Bitvavo().tickers()["bid"].dropna().to_dict()
-        for pf in ("live", "Q", "QL", "RND"):
+        for pf in PORTFOLIOS:
             led = Ledger(pf)
             cap = capital_for(pf, settings)
             print(f"{pf:5s} capital {led.equity(cap, marks):9.2f} € · abiertas {len(led.open_trades())} · "

@@ -43,7 +43,7 @@ VARIANTS: dict[str, Variant] = {
 def variant_settings(settings: Settings, v: Variant) -> Settings:
     """Ajustes con el stop/objetivo/duración de la variante (el motor de riesgo dimensiona con ellos)."""
     trade = settings.trade.model_copy(update={
-        "stop_atr": v.stop_atr, "take_profit_atr": v.tp_atr if v.tp_atr is not None else 1e6,
+        "stop_atr": v.stop_atr, "take_profit_atr": v.tp_atr,
         "max_holding_days": v.max_days})
     return settings.model_copy(update={"trade": trade})
 

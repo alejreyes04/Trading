@@ -53,7 +53,8 @@ def trade_levels(entry: float, atr_pct: float, settings: Settings, rules: Market
     t = settings.trade
     stop = round_price(entry * (1 - t.stop_atr * atr_pct), rules.tick_size, up=False)
     stop_limit = round_price(stop * (1 - settings.exchange.stop_limit_offset), rules.tick_size, up=False)
-    tp = round_price(entry * (1 + t.take_profit_atr * atr_pct), rules.tick_size, up=True)
+    tp = (round_price(entry * (1 + t.take_profit_atr * atr_pct), rules.tick_size, up=True)
+          if t.take_profit_atr is not None else float("inf"))
     return stop, stop_limit, tp
 
 

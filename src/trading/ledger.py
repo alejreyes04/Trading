@@ -4,6 +4,7 @@ Carteras:
   Q    simulada, solo parte cuantitativa
   QL   simulada, cuant + decisiones del agente trader (LLM)
   RND  simulada, entradas aleatorias con las mismas reglas de salida (referencia nula)
+  V2C  simulada, tendencia en BTC/ETH durante semanas (variante v2c de research/hypotheses.md)
   live dinero real: propuestas que ejecutas tú (con tus correcciones en ledger/live/fills.csv)
 """
 
@@ -18,7 +19,9 @@ import pandas as pd
 
 from trading.paths import LEDGER_DIR
 
-PORTFOLIOS = ("Q", "QL", "RND", "live")
+PORTFOLIOS = ("live", "Q", "QL", "RND", "V2C")
+PORTFOLIO_NAMES = {"live": "Real (tú)", "Q": "Q · solo cuant", "QL": "QL · cuant + agente",
+                   "RND": "RND · aleatoria", "V2C": "V2C · tendencia BTC/ETH"}
 OPEN_STATES = ("open", "pending")
 
 

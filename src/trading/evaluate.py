@@ -91,20 +91,20 @@ def weekly_report() -> str:
     """Informe semanal de las carteras (texto Markdown)."""
     from trading.config import load_settings
     from trading.data.bitvavo import Bitvavo
-    from trading.ledger import Ledger, load_meta
+    from trading.ledger import PORTFOLIO_NAMES, PORTFOLIOS, Ledger, load_meta
     from trading.orders import fmt_eur
     from trading.paths import REPORTS_DIR
     from trading.pipeline import capital_for
 
     settings = load_settings()
     meta = load_meta()
-    names = {"live": "Real (tú)", "Q": "Q · solo cuant", "QL": "QL · cuant + agente", "RND": "RND · aleatoria"}
+    names = PORTFOLIO_NAMES
     lines = [f"# Informe semanal — {datetime.now(timezone.utc):%Y-%m-%d}", "",
              f"Desde {meta.get('start_date', '—')}. Todas las cifras son netas de comisiones y slippage estimado.", "",
              "| Cartera | Operaciones | Aciertos | R medio | IC 95 % del R medio | Profit factor | P&L | Caída máx. |",
              "|---|---|---|---|---|---|---|---|"]
     brier_rows = []
-    for pf in ("live", "Q", "QL", "RND"):
+    for pf in PORTFOLIOS:
         led = Ledger(pf)
         closed = led.closed_trades()
         st = trade_stats([t.r_multiple for t in closed], [t.pnl_eur for t in closed])

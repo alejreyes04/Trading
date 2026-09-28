@@ -2,17 +2,20 @@
 
 from __future__ import annotations
 
+import json
 from datetime import datetime
 from pathlib import Path
 from zoneinfo import ZoneInfo
 
+from trading.ledger import PORTFOLIO_NAMES, PORTFOLIOS
 from trading.orders import fmt_eur, fmt_price, fmt_qty
 from trading.paths import REPORTS_DIR
 
 MADRID = ZoneInfo("Europe/Madrid")
 REGIME_ES = {"risk_on": "ALCISTA (risk-on)", "neutral": "NEUTRAL", "risk_off": "BAJISTA (risk-off)"}
-REASON_ES = {"stop": "stop-loss", "objetivo": "objetivo", "tiempo": "salida por tiempo (10 días)",
-             "agente": "cierre propuesto por el agente", "manual": "cierre manual"}
+REASON_ES = {"stop": "stop-loss", "objetivo": "objetivo", "tiempo": "salida por tiempo (fecha máxima)",
+             "tendencia": "fin de tendencia (cierre < SMA50)", "agente": "cierre propuesto por el agente",
+             "manual": "cierre manual"}
 
 
 def madrid(ts: str | None) -> str:
@@ -101,14 +104,13 @@ def portfolio_table(ledgers: dict, settings, marks: dict) -> list[str]:
 
     lines = ["| Cartera | Capital inicial | Capital actual | P&L | Cerradas | Aciertos | Abiertas |",
              "|---|---|---|---|---|---|---|"]
-    names = {"live": "Real (tú)", "Q": "Q · solo cuant", "QL": "QL · cuant + agente", "RND": "RND · aleatoria"}
-    for pf in ("live", "Q", "QL", "RND"):
+    for pf in PORTFOLIOS:
         led = ledgers[pf]
         cap = capital_for(pf, settings)
         eq = led.equity(cap, marks)
         closed = led.closed_trades()
         wins = sum(1 for t in closed if (t.pnl_eur or 0) > 0)
-        lines.append(f"| {names[pf]} | {fmt_eur(cap)} | {fmt_eur(eq)} | {pct(eq / cap - 1)} | {len(closed)} | "
+        lines.append(f"| {PORTFOLIO_NAMES[pf]} | {fmt_eur(cap)} | {fmt_eur(eq)} | {pct(eq / cap - 1)} | {len(closed)} | "
                      f"{'—' if not closed else f'{wins / len(closed):.0%}'} | {len(led.open_trades())} |")
     return lines
 
@@ -181,6 +183,9 @@ def write_main_report(rdir: Path, market: dict, shortlist: list[dict], ctx, dec,
     except Exception:
         pass
     lines += ["", "## Carteras", ""] + portfolio_table(ledgers, settings, marks)
+    v2c_path = rdir / "v2c.json"
+    v2c = json.loads(v2c_path.read_text()) if v2c_path.exists() else {}
+    lines += ["", "## V2C · tendencia BTC/ETH (simulada)", ""] + v2c_section(v2c, ledgers["V2C"])
     lines += ["", "## Notas técnicas", ""] + [f"- {n}" for n in result.get("notes", [])]
     lines.append(f"- Embudo del universo: {market.get('funnel')}; elegibles {market.get('n_eligible')}, "
                  f"candidatas {market.get('n_candidates')}.")
@@ -190,11 +195,44 @@ def write_main_report(rdir: Path, market: dict, shortlist: list[dict], ctx, dec,
     REPORTS_DIR.mkdir(parents=True, exist_ok=True)
     out = REPORTS_DIR / f"{datetime.fromisoformat(market['generated_at']).astimezone(MADRID):%Y-%m-%d_%H%M}_principal.md"
     out.write_text(text, encoding="utf-8")
-    (rdir / "summary.txt").write_text(main_summary(market, proposals, result), encoding="utf-8")
+    (rdir / "summary.txt").write_text(main_summary(market, proposals, result, v2c), encoding="utf-8")
     return out
 
 
-def main_summary(market: dict, proposals: list, result: dict) -> str:
+def _usd(x) -> str:
+    return "—" if x is None else f"{x:,.0f}".replace(",", ".")
+
+
+def v2c_section(v2c: dict, ledger) -> list[str]:
+    lines = ["Regla pre-registrada (variante v2c): se compra BTC/ETH si el cierre diario > SMA50 > SMA200. Se vende "
+             "si el cierre diario cae por debajo de la SMA50, con stop a 3 ATR o a los 90 días. Es **solo "
+             "simulación**, no una propuesta de compra.", ""]
+    for sym, s in (v2c.get("signals") or {}).items():
+        state = "en tendencia" if sym in (v2c.get("in_trend") or []) else "sin tendencia"
+        lines.append(f"- {sym.removesuffix('USDT')}: cierre {_usd(s.get('close'))} $ · SMA50 {_usd(s.get('sma50'))} $ · "
+                     f"SMA200 {_usd(s.get('sma200'))} $ → **{state}**")
+    for t in v2c.get("entries") or []:
+        lines.append(f"- Entrada simulada hoy: {t['base']} a {fmt_price(t['entry_price'])} € "
+                     f"({fmt_eur(t['notional_eur'])}), stop {fmt_price(t['stop_price'])} €")
+    for r in v2c.get("rejected") or []:
+        if r["reason"] != "ya hay posición abierta":
+            lines.append(f"- {r['base']} no entra: {r['reason']}")
+    for t in v2c.get("exits") or []:
+        lines.append(f"- Salida simulada: {t['base']} por {REASON_ES.get(t['exit_reason'], t['exit_reason'])} a "
+                     f"{fmt_price(t['exit_price'])} € → {fmt_eur(t['pnl_eur'])}")
+    opened = ledger.open_trades()
+    if opened:
+        lines.append("- Posiciones abiertas: " + "; ".join(
+            f"{t.base} desde {madrid(t.opened_at)} a {fmt_price(t.entry_price)} €, stop {fmt_price(t.stop_price)} €, "
+            f"salida máx. {madrid(t.time_exit_at)}" for t in opened))
+    else:
+        lines.append("- Sin posiciones abiertas.")
+    if v2c.get("blocked_reason"):
+        lines.append(f"- Entradas bloqueadas: {v2c['blocked_reason']}")
+    return lines
+
+
+def main_summary(market: dict, proposals: list, result: dict, v2c: dict | None = None) -> str:
     r = market["regime"]
     parts = [f"Régimen {REGIME_ES[r['label']]}."]
     if proposals:
@@ -207,6 +245,12 @@ def main_summary(market: dict, proposals: list, result: dict) -> str:
     for x in result.get("exit_actions", []):
         if x["portfolio"] == "live":
             parts.append(f"Vender {x['trade_id']}: {x['reason']}.")
+    v2c = v2c or {}
+    events = [f"compra {t['base']}" for t in v2c.get("entries") or []]
+    events += [f"venta {t['base']} por {REASON_ES.get(t['exit_reason'], t['exit_reason'])} ({fmt_eur(t['pnl_eur'])})"
+               for t in v2c.get("exits") or []]
+    if events:
+        parts.append("V2C (simulada): " + "; ".join(events) + ".")
     return " ".join(parts)
 
 

@@ -20,12 +20,13 @@ from trading.data.binance_vision import BinanceVision
 from trading.data.bitvavo import Bitvavo, empty_candles
 from trading.data.coingecko import CoinGecko
 from trading.data.okx import OKX
-from trading.ledger import Ledger, Trade, ensure_fills_template, load_meta, save_meta
+from trading.ledger import PORTFOLIOS, Ledger, Trade, ensure_fills_template, load_meta, save_meta
 from trading.orders import MarketRules
 from trading.paper import iso, next_run_after, resolve_pending, update_exits
 from trading.paths import RUNS_DIR
 from trading.risk import Candidate, Plan, plan_entries
 from trading.schemas import Context, Decisions, check_decisions_against
+from trading.strategies import MAJORS, VARIANTS, select_majors_trend, variant_settings
 
 log = logging.getLogger(__name__)
 BTC = features.BTC
@@ -82,7 +83,8 @@ class CandleCache:
         cached = self.cache.get(market)
         if cached is None or cached.empty or cached.index.min() > start:
             # Bitvavo devuelve como máximo 1440 velas (60 días de 1 h), las más recientes desde `start`.
-            # Las posiciones duran ≤ 10 días, así que una llamada basta.
+            # Cada ejecución avanza `last_checked_at`, así que la ventana pendiente es corta y una llamada basta
+            # (también para V2C, cuyas posiciones pueden durar hasta 90 días).
             try:
                 cached = self.bitvavo.candles(market, "1h", start_ms=int(start.timestamp() * 1000), limit=1440)
             except Exception as exc:
@@ -146,6 +148,42 @@ def candidates_from(rows: list[dict], markets: pd.DataFrame, settings: Settings,
     return out
 
 
+# --------------------------------------------------------------------------- V2C
+def run_v2c(ledger: Ledger, snap: pd.DataFrame, markets: pd.DataFrame, asks: dict[str, float],
+            marks: dict[str, float], returns: pd.DataFrame | None, settings: Settings, run_id: str,
+            now: datetime) -> dict:
+    """Cartera simulada V2C: la variante v2c de research/hypotheses.md con las mismas reglas que en el backtest.
+
+    Salida si el último cierre diario queda por debajo de la SMA50 (se vende al bid − slippage); el stop a 3 ATR
+    y la salida a 90 días los vigila update_exits. Entrada en BTC/ETH si cierre > SMA50 > SMA200, sin objetivo,
+    en cualquier régimen y sin multiplicador de régimen.
+    """
+    v2c = variant_settings(settings, VARIANTS["v2c"])
+    exits = []
+    for t in ledger.open_trades():
+        if t.status != "open" or t.binance_symbol not in snap.index or t.market not in marks:
+            continue
+        row = snap.loc[t.binance_symbol]
+        if pd.notna(row["sma50"]) and row["close"] < row["sma50"]:
+            price = marks[t.market] * (1 - scoring.slippage_for(row["qv_median_30"], settings))
+            t.close(iso(now), price, "tendencia", settings.exchange.taker_fee)
+            exits.append(t)
+    in_trend = select_majors_trend(snap)
+    rows = []
+    for sym in in_trend:
+        base = sym.removesuffix("USDT")
+        market = f"{base}-EUR"
+        if market in asks and np.isfinite(snap.at[sym, "atr_pct"]):
+            rows.append({"base": base, "market": market, "binance_symbol": sym, "score": float("nan"),
+                         "ask_eur": asks[market], "atr_pct": float(snap.at[sym, "atr_pct"]),
+                         "qv_median_30": float(snap.at[sym, "qv_median_30"])})
+    plan = plan_entries(candidates_from(rows, markets, v2c), ledger, capital_for(ledger.portfolio, settings),
+                        marks, 1.0, v2c, returns, now)
+    entries = open_paper_trades(plan, ledger, run_id, now, v2c, asks)
+    signals = {s: {k: snap.at[s, k] for k in ("close", "sma50", "sma200")} for s in MAJORS if s in snap.index}
+    return {"plan": plan, "entries": entries, "exits": exits, "signals": signals, "in_trend": in_trend}
+
+
 # --------------------------------------------------------------------------- SCAN
 def scan(now: datetime | None = None, use_coingecko: bool = True) -> Path:
     settings, excl = load_settings(), load_exclusions()
@@ -162,7 +200,7 @@ def scan(now: datetime | None = None, use_coingecko: bool = True) -> Path:
     marks = tickers["bid"].dropna().to_dict()
     asks = tickers["ask"].dropna().to_dict()
     fetch = CandleCache(bt)
-    ledgers = {pf: Ledger(pf) for pf in ("Q", "QL", "RND", "live")}
+    ledgers = {pf: Ledger(pf) for pf in PORTFOLIOS}
 
     # 1) Mantenimiento: órdenes reales pendientes y salidas de posiciones abiertas.
     housekeeping = {"live_resolved": [t.trade_id for t in resolve_pending(ledgers["live"], fetch, settings, now)]}
@@ -180,7 +218,7 @@ def scan(now: datetime | None = None, use_coingecko: bool = True) -> Path:
     uni = universe.build(syms, tick24, markets, tickers, cg, settings, excl)
     static = uni[uni["eligible_static"]].index.tolist()
     held = {t.binance_symbol for led in ledgers.values() for t in led.open_trades()}
-    frames = bv.klines_many(sorted(set(static) | held | {BTC}), limit=220)
+    frames = bv.klines_many(sorted(set(static) | held | {BTC} | set(MAJORS)), limit=220)
     feats = features.compute(features.Panel.from_frames(frames), settings.trade.atr_period)
     snap = features.snapshot(feats)
     eligible = scoring.eligibility(snap, settings) & snap.index.isin(static)
@@ -220,6 +258,9 @@ def scan(now: datetime | None = None, use_coingecko: bool = True) -> Path:
                             capital_for("RND", settings), marks, reg.multiplier, settings, returns, now)
     open_paper_trades(rnd_plan, ledgers["RND"], rid, now, settings, asks)
     plans["RND"] = rnd_plan
+    # V2C: tendencia en BTC/ETH, independiente de la lista corta y del régimen.
+    v2c = run_v2c(ledgers["V2C"], snap, markets, asks, marks, returns, settings, rid, now)
+    plans["V2C"] = v2c["plan"]
 
     # 4) Contexto de mercado para los agentes.
     market = {"run_id": rid, "generated_at": iso(now), "regime": reg.to_dict(),
@@ -272,7 +313,13 @@ def scan(now: datetime | None = None, use_coingecko: bool = True) -> Path:
     open_positions = [clean(asdict(t)) for led in ledgers.values() for t in led.open_trades()]
     write_json(rdir / "positions.json", open_positions)
     write_json(rdir / "housekeeping.json", clean(housekeeping))
-    for pf in ("Q", "RND"):
+    write_json(rdir / "v2c.json", clean({
+        "signals": v2c["signals"], "in_trend": v2c["in_trend"],
+        "entries": [asdict(t) for t in v2c["entries"]],
+        "exits": housekeeping["V2C_closed"] + [asdict(t) for t in v2c["exits"]],
+        "blocked_reason": v2c["plan"].blocked_reason,
+        "rejected": [{"base": b, "reason": r} for b, r in v2c["plan"].rejected]}))
+    for pf in ("Q", "RND", "V2C"):
         ledgers[pf].record_equity(rid, capital_for(pf, settings), marks)
     for led in ledgers.values():
         led.save()
@@ -322,7 +369,7 @@ def decide(rdir: Path, now: datetime | None = None, force: bool = False, live: b
     shortlist = json.loads((rdir / "shortlist.json").read_text())
     market = json.loads((rdir / "market.json").read_text())
     rid = market["run_id"]
-    ledgers = {pf: Ledger(pf) for pf in ("Q", "QL", "RND", "live")}
+    ledgers = {pf: Ledger(pf) for pf in PORTFOLIOS}
     open_ids = [t.trade_id for pf in ("QL", "live") for t in ledgers[pf].open_trades()]
     ctx, dec, notes = load_agent_outputs(rdir, shortlist, open_ids)
 
@@ -407,7 +454,7 @@ def monitor(now: datetime | None = None) -> tuple[Path, bool]:
     tickers = bt.tickers()
     marks = tickers["bid"].dropna().to_dict()
     fetch = CandleCache(bt)
-    ledgers = {pf: Ledger(pf) for pf in ("Q", "QL", "RND", "live")}
+    ledgers = {pf: Ledger(pf) for pf in PORTFOLIOS}
     resolved = resolve_pending(ledgers["live"], fetch, settings, now)
     closed = {pf: update_exits(led, fetch, settings, now) for pf, led in ledgers.items()}
     try:
