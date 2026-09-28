@@ -49,6 +49,9 @@ def main(argv: list[str] | None = None) -> int:
     p_bt.add_argument("--random-runs", type=int, default=100)
     p_bt.add_argument("--refresh", action="store_true", help="vuelve a descargar el histórico")
     sub.add_parser("status")
+    p_rs = sub.add_parser("research", help="evalúa las variantes pre-registradas (research/hypotheses.md)")
+    p_rs.add_argument("--from", dest="start", default="2021-01-01")
+    p_rs.add_argument("--random-runs", type=int, default=50)
     args = parser.parse_args(argv)
     logging.basicConfig(level=logging.INFO if args.verbose else logging.WARNING,
                         format="%(levelname)s %(name)s: %(message)s")
@@ -119,6 +122,12 @@ def main(argv: list[str] | None = None) -> int:
 
         out = run_backtest(args.start, args.end, random_runs=args.random_runs, refresh=args.refresh)
         print(f"Informe: {out}")
+        return 0
+
+    if args.cmd == "research":
+        from trading.research import run_research
+
+        print(f"Informe: {run_research(args.start, random_runs=args.random_runs)}")
         return 0
 
     if args.cmd == "status":

@@ -1,0 +1,165 @@
+{
+  "v1": {
+    "label": "v1 · a priori (momentum)",
+    "notes": "",
+    "stats": {
+      "total_return": -0.14198884481996255,
+      "cagr": -0.02634541409788349,
+      "vol_ann": 0.12164076179485575,
+      "sharpe": -0.15846721225190977,
+      "sortino": -0.18022804013544155,
+      "max_drawdown": -0.3965454613636039
+    },
+    "n_trades": 808,
+    "avg_r": -0.03606506039946688,
+    "avg_r_ci95": [
+      -0.10344319235564789,
+      0.033052489337225516
+    ],
+    "win_rate": 0.40594059405940597,
+    "exits": {
+      "tiempo": 354,
+      "stop": 259,
+      "objetivo": 193,
+      "retirada": 2
+    },
+    "halves": [
+      0.023038232127710945,
+      -0.1613107621642359
+    ],
+    "sr_daily": -0.008294552983883059,
+    "exposure": 0.6412213740458015,
+    "fees": 69.74286828256687,
+    "dsr": 0.04351882702047443
+  },
+  "v2a": {
+    "label": "v2a · solo risk-on",
+    "notes": "post-hoc (idea sacada del desglose por régimen de la v1)",
+    "stats": {
+      "total_return": 0.011004142155778274,
+      "cagr": 0.0019098450904135866,
+      "vol_ann": 0.11268840840713842,
+      "sharpe": 0.0732410632414038,
+      "sortino": 0.06929909283180759,
+      "max_drawdown": -0.3146409709456529
+    },
+    "n_trades": 393,
+    "avg_r": 0.011991070438100071,
+    "avg_r_ci95": [
+      -0.08607530194961455,
+      0.1113841858127703
+    ],
+    "win_rate": 0.4173027989821883,
+    "exits": {
+      "tiempo": 174,
+      "stop": 119,
+      "objetivo": 98,
+      "retirada": 2
+    },
+    "halves": [
+      0.20980519152510024,
+      -0.16432484400129754
+    ],
+    "sr_daily": 0.0038336124616493487,
+    "exposure": 0.36498091603053434,
+    "fees": 53.93728870913286,
+    "random": {
+      "runs": 50,
+      "sharpe_median": 0.2696277395919122,
+      "total_return_median": 0.15102988077337887,
+      "pct_rank_sharpe": 0.18
+    },
+    "dsr": 0.12409006981778481,
+    "criteria": {
+      "R medio > 0 y Sharpe deflactado ≥ 0,90": false,
+      "rentabilidad > 0 en 2021–2023 y en 2024–2026": false,
+      "caída máxima ≤ 25 %": false,
+      "percentil ≥ 80 en Sharpe frente al azar": false
+    },
+    "passes": false
+  },
+  "v2b": {
+    "label": "v2b · retroceso en tendencia",
+    "notes": "",
+    "stats": {
+      "total_return": -0.20516386704996348,
+      "cagr": -0.03924195320972568,
+      "vol_ann": 0.0722095165531511,
+      "sharpe": -0.5178130482853707,
+      "sortino": -0.4655723226865679,
+      "max_drawdown": -0.3237328230226668
+    },
+    "n_trades": 394,
+    "avg_r": -0.09814432650653811,
+    "avg_r_ci95": [
+      -0.1702858247128881,
+      -0.026561203850525655
+    ],
+    "win_rate": 0.4010152284263959,
+    "exits": {
+      "tiempo": 275,
+      "stop": 81,
+      "objetivo": 38
+    },
+    "halves": [
+      -0.02560376258928898,
+      -0.18427832289031043
+    ],
+    "sr_daily": -0.027103573690192444,
+    "exposure": 0.5062022900763359,
+    "fees": 29.405140482679215,
+    "random": {
+      "runs": 50,
+      "sharpe_median": 0.06592712922102001,
+      "total_return_median": 0.0025575401294093414,
+      "pct_rank_sharpe": 0.0
+    },
+    "dsr": 0.004693256305747294,
+    "criteria": {
+      "R medio > 0 y Sharpe deflactado ≥ 0,90": false,
+      "rentabilidad > 0 en 2021–2023 y en 2024–2026": false,
+      "caída máxima ≤ 25 %": false,
+      "percentil ≥ 80 en Sharpe frente al azar": false
+    },
+    "passes": false
+  },
+  "v2c": {
+    "label": "v2c · tendencia BTC/ETH (semanas)",
+    "notes": "fuera del horizonte de 2–10 días",
+    "stats": {
+      "total_return": 0.2860064378880527,
+      "cagr": 0.044830522284729835,
+      "vol_ann": 0.06217776094860096,
+      "sharpe": 0.7359653004668387,
+      "sortino": 0.5921818433704121,
+      "max_drawdown": -0.06747146867660048
+    },
+    "n_trades": 56,
+    "avg_r": 0.46241473869099126,
+    "avg_r_ci95": [
+      0.05347461508099241,
+      0.9248448593398858
+    ],
+    "win_rate": 0.2857142857142857,
+    "exits": {
+      "tendencia": 52,
+      "stop": 3,
+      "tiempo": 1
+    },
+    "halves": [
+      0.18256099121787717,
+      0.08747578132409117
+    ],
+    "sr_daily": 0.0385221844460638,
+    "exposure": 0.3788167938931298,
+    "fees": 14.340050861888448,
+    "dsr": 0.6658531152500092,
+    "criteria": {
+      "R medio > 0 y Sharpe deflactado ≥ 0,90": false,
+      "rentabilidad > 0 en 2021–2023 y en 2024–2026": true,
+      "caída máxima ≤ 25 %": true,
+      "Sharpe > Sharpe de BTC comprar y mantener": true
+    },
+    "passes": false
+  }
+}

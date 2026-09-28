@@ -29,6 +29,7 @@ from trading.evaluate import bootstrap_mean_ci, equity_stats, probabilistic_shar
 from trading.orders import MarketRules
 from trading.paths import REPORTS_DIR
 from trading.risk import Candidate, plan_entries
+from trading.strategies import VARIANTS, Variant, select_majors_trend, select_pullback, variant_settings
 
 log = logging.getLogger(__name__)
 NO_RULES = MarketRules(tick_size=0.0, quantity_decimals=12, min_quote=0.0, min_base=0.0)
@@ -131,19 +132,28 @@ def precompute(panel: features.Panel, settings: Settings, start: pd.Timestamp, e
             continue
         reg = scoring.regime(snap, elig, settings)
         scored = scoring.score(snap, elig, settings)
-        cands = scored[scored["candidate"]].head(settings.signals.shortlist_size)
+        k = settings.signals.shortlist_size
+        cands = scored[scored["candidate"]].head(k)
+        sel = {"v1": cands.index.tolist(), "pullback": select_pullback(scored, k),
+               "majors_trend": select_majors_trend(snap)}
+        syms = set(scored.index) | set(sel["majors_trend"])
+        info = snap.loc[sorted(syms), ["atr_pct", "qv_median_30", "close"]]
         daily[d] = {
             "regime": reg.label, "mult": reg.multiplier, "breadth": reg.breadth,
             "eligible": scored.index.tolist(),
-            "candidates": cands.index.tolist(),
-            "score": scored["score"].to_dict(), "atr_pct": scored["atr_pct"].to_dict(),
-            "qv": scored["qv_median_30"].to_dict(), "close": scored["close"].to_dict(),
+            "candidates": sel["v1"], "sel": sel,
+            "score": scored["score"].to_dict(), "atr_pct": info["atr_pct"].to_dict(),
+            "qv": info["qv_median_30"].to_dict(), "close": info["close"].to_dict(),
         }
     return {"feats": feats, "daily": daily, "dates": dates}
 
 
-def simulate(pre: dict, panel: features.Panel, settings: Settings, mode: str = "Q", seed: int = 0) -> dict:
+def simulate(pre: dict, panel: features.Panel, settings: Settings, mode: str = "Q", seed: int = 0,
+             variant: Variant | None = None) -> dict:
+    variant = variant or VARIANTS["v1"]
+    settings = variant_settings(settings, variant)
     t, r = settings.trade, settings.risk
+    sma50 = pre["feats"]["sma50"]
     book = Book(settings.capital.paper_eur)
     rng = random.Random(seed)
     opens, highs, lows, closes = panel.open, panel.high, panel.low, panel.close
@@ -167,7 +177,7 @@ def simulate(pre: dict, panel: features.Panel, settings: Settings, mode: str = "
             book.cash_ -= price * qty + fee
             book.fees += fee
             stop = price * (1 - t.stop_atr * atr_pct)
-            tp = price * (1 + t.take_profit_atr * atr_pct)
+            tp = price * (1 + variant.tp_atr * atr_pct) if variant.tp_atr is not None else float("inf")
             book.positions[sym] = Pos(sym, sym, sym, qty, price, stop, tp, d, qty * (price - stop), fee,
                                       regime_label, slip)
         pending = []
@@ -188,6 +198,8 @@ def simulate(pre: dict, panel: features.Panel, settings: Settings, mode: str = "
                 book.close(p, d, fill, "stop", settings.exchange.taker_fee)
             elif h >= p.tp:
                 book.close(p, d, max(p.tp, o), "objetivo", settings.exchange.maker_fee)
+            elif variant.trend_exit == "sma50" and c < sma50.at[d, p.market]:
+                book.close(p, d, c * (1 - p.slippage), "tendencia", settings.exchange.taker_fee)
             elif p.bars >= t.max_holding_days:
                 book.close(p, d, c * (1 - p.slippage), "tiempo", settings.exchange.taker_fee)
 
@@ -201,16 +213,20 @@ def simulate(pre: dict, panel: features.Panel, settings: Settings, mode: str = "
         day = pre["daily"].get(d)
         if day is None or i == len(dates) - 1:
             continue
+        if day["regime"] not in variant.regimes:
+            continue
+        mult = day["mult"] if variant.use_regime_multiplier else 1.0
         if mode == "Q":
-            pool = day["candidates"]
+            pool = day["sel"][variant.select]
         else:
             # Nula justa: el mismo nº de candidatas que la lista corta, elegidas al azar del universo elegible.
             pool = rng.sample(day["eligible"], min(len(day["eligible"]), settings.signals.shortlist_size))
-        cands = [Candidate(base=s, market=s, binance_symbol=s, score=day["score"][s], ask_eur=day["close"][s],
-                           atr_pct=day["atr_pct"][s], slippage=scoring.slippage_for(day["qv"][s], settings),
-                           rules=NO_RULES) for s in pool]
+        cands = [Candidate(base=s, market=s, binance_symbol=s, score=day["score"].get(s, 0.0),
+                           ask_eur=day["close"][s], atr_pct=day["atr_pct"][s],
+                           slippage=scoring.slippage_for(day["qv"][s], settings), rules=NO_RULES)
+                 for s in pool if s in day["close"] and math.isfinite(day["atr_pct"].get(s, float("nan")))]
         rets_window = returns.iloc[max(0, returns.index.get_loc(d) - 60): returns.index.get_loc(d) + 1]
-        plan = plan_entries(cands, book, book.capital, marks, day["mult"], settings, rets_window,
+        plan = plan_entries(cands, book, book.capital, marks, mult, settings, rets_window,
                             d.to_pydatetime())
         pending = [(e.candidate.market, e.qty, e.candidate.atr_pct, e.candidate.slippage, day["regime"])
                    for e in plan.entries]
@@ -247,19 +263,21 @@ def benchmarks(pre: dict, panel: features.Panel, settings: Settings) -> dict[str
 _CTX: dict = {}
 
 
-def _random_worker(seed: int) -> dict:
-    out = simulate(_CTX["pre"], _CTX["panel"], _CTX["settings"], "RND", seed=seed)
+def _random_worker(args: tuple[int, str]) -> dict:
+    seed, variant_name = args
+    out = simulate(_CTX["pre"], _CTX["panel"], _CTX["settings"], "RND", seed=seed, variant=VARIANTS[variant_name])
     return {"equity": out["equity"], "trades": out["trades"][["r", "pnl"]] if not out["trades"].empty else out["trades"]}
 
 
-def run_random(pre: dict, panel: features.Panel, settings: Settings, runs: int, workers: int = 4) -> list[dict]:
+def run_random(pre: dict, panel: features.Panel, settings: Settings, runs: int, workers: int = 4,
+               variant_name: str = "v1") -> list[dict]:
     """Carteras aleatorias en paralelo (fork: los datos se comparten sin copiarlos)."""
     import multiprocessing as mp
 
     _CTX.update(pre=pre, panel=panel, settings=settings)
     ctx = mp.get_context("fork")
     with ctx.Pool(workers) as pool:
-        return pool.map(_random_worker, range(runs))
+        return pool.map(_random_worker, [(s, variant_name) for s in range(runs)])
 
 
 def run_backtest(start: str = "2021-01-01", end: str | None = None, random_runs: int = 100,
