@@ -9,7 +9,7 @@ capital:
   # Capital REAL con el que operas en Bitvavo para este sistema (en EUR).
   # Etapa 1 recomendada: 500. Súbelo solo según los criterios del README.
   live_eur: 500
-  # Capital con el que arrancan las carteras simuladas (Q, QL, RND).
+  # Capital con el que arrancan las carteras simuladas (Q, QL, RND, V2C).
   # Igual que el real para que las cifras sean comparables.
   paper_eur: 500
   # Fecha desde la que se miden las carteras (se rellena en la primera ejecución).

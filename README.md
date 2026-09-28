@@ -36,11 +36,35 @@ Bitvavo y el mismo motor de riesgo que el sistema real. Informe completo: `repor
   igual o mejor. La estrategia queda en el percentil 19.
 - **Conclusión honesta:** comprar las altcoins con más momentum para venderlas en 2–10 días **no funcionó**
   en este periodo, ni siquiera con riesgo controlado. Por eso `mode.live_enabled` está en `false`.
-- **Qué sigue funcionando:** el sistema opera en **simulación** (Q, QL y RND) para acumular datos reales hacia
-  delante y medir si el agente de IA aporta algo. Puedes activar el modo real editando
+- **Qué sigue funcionando:** el sistema opera en **simulación** (Q, QL, RND y V2C) para acumular datos reales
+  hacia delante y medir si el agente de IA aporta algo. Puedes activar el modo real editando
   `config/settings.yaml`, pero sería en contra de esta evidencia.
 - Registro de variantes probadas en `reports/experiments.csv`. La primera ejecución está marcada como
   inválida por un error de programación que ya está corregido.
+
+### Investigación de variantes (pre-registrada)
+
+Después del resultado negativo probé tres variantes. Sus reglas y los criterios de éxito se fijaron y se
+subieron al repo **antes** de ejecutarlas (`research/hypotheses.md`), para no ajustar nada a posteriori.
+Informe completo: `reports/research_2026-09-28.md`.
+
+| Variante | Rentabilidad | Sharpe | Caída máx. | Operaciones | R medio (IC 95 %) | Sharpe deflactado | ¿Cumple? |
+|---|---|---|---|---|---|---|---|
+| v2a · solo en mercado alcista | +1,1 % | 0,07 | −31,5 % | 393 | +0,01 (−0,09 a +0,11) | 12 % | ❌ No mejora al azar (percentil 18) |
+| v2b · comprar retrocesos dentro de una tendencia | −20,5 % | −0,52 | −32,4 % | 394 | **−0,10 (−0,17 a −0,03)** | 0 % | ❌ Pierde de forma clara |
+| v2c · tendencia en BTC/ETH (semanas, no días) | **+28,6 %** | **0,74** | **−6,7 %** | 56 | **+0,46 (+0,05 a +0,93)** | 67 % | ❌ Solo falla el Sharpe deflactado ≥ 90 % |
+| *Referencia: BTC comprar y mantener* | +188,0 % | 0,61 | −76,6 % | — | — | — | — |
+
+- **Ninguna variante cumple todos los criterios**, así que el modo real sigue desactivado.
+- **v2c es la única prometedora:**
+  - Gana en las dos mitades del periodo (+18,3 % en 2021–23 y +8,7 % en 2024–26).
+  - Su Sharpe es mejor que el de mantener BTC, con una caída máxima de −6,7 % frente a −76,6 %.
+  - Pero tiene solo 56 operaciones, así que la evidencia estadística todavía es insuficiente. Además está
+    fuera de tu horizonte de 2–10 días: mantiene posiciones durante semanas.
+  - Su rentabilidad es mucho menor que la de mantener BTC, porque solo está invertida el 38 % del tiempo y
+    con posiciones pequeñas.
+- **Qué hacemos con ella:** se sigue **hacia delante en simulación** como cartera **V2C**, con las mismas
+  reglas. Si con el tiempo acumula evidencia, será la candidata a dinero real, siempre por decisión tuya.
 
 ---
 
@@ -70,12 +94,16 @@ Por dentro:
    - Máximo 25 % del capital en una sola moneda.
    - Filtro de correlación.
    - Pausa si el capital cae un 15 % desde su máximo.
-5. **Registro:** cuatro carteras en paralelo para poder comparar:
+5. **Registro:** cinco carteras en paralelo para poder comparar:
    - **Real (tú):** lo que ejecutas de verdad.
    - **Q:** solo la parte cuant (simulada).
    - **QL:** cuant + agente trader (simulada). Mide si la IA aporta algo.
    - **RND:** entradas al azar con las mismas reglas (simulada). Es la referencia para saber si hay habilidad
      o solo suerte de mercado.
+   - **V2C:** tendencia en BTC/ETH (simulada), con las reglas de la variante v2c:
+     - Compra si el cierre diario está por encima de la media de 50 días y esta por encima de la de 200.
+     - Vende si el cierre cae por debajo de la media de 50 días, si toca el stop a 3 ATR o a los 90 días.
+     - Va aparte de la lista corta y del agente, y tiene su propia sección en el informe diario.
 
 ## Qué haces tú con una propuesta
 
@@ -123,26 +151,53 @@ sistema, pon `mode.live_enabled: false`.
 Todo está en `config/settings.yaml`, comentado en español: capital, riesgo por operación, límites, filtros
 de universo, stop y objetivo en ATR, horarios. `config/exclusions.yaml` sirve para excluir monedas a mano.
 
+## Poner en marcha las ejecuciones diarias (Routines)
+
+Las ejecuciones programadas son **Routines de Claude Code**. Las creas tú una vez desde
+<https://claude.ai/code/routines>, con el repositorio adjunto. **Todos los pasos y los textos exactos
+para copiar están en [`agents/ROUTINES.md`](agents/ROUTINES.md).** Resumen:
+
+- **«Trading · principal»**, cada día a las 07:47 (Madrid). Es la importante.
+- **«Trading · vigilancia»**, a las 13:47 y a las 20:47. Mientras el modo real esté desactivado no cambia los
+  resultados simulados, así que es opcional.
+- **Entorno:** el mismo de esta sesión («Marketing»), no «Default».
+- **Conectores:** **ninguno**.
+- **Datos:** los resultados se guardan en la rama `claude/trading-runs`.
+- **Coste:** cada ejecución principal consume unos 143.000 tokens de tu plan (medido en una prueba), y hay
+  un tope diario de ejecuciones de Routines por cuenta.
+
+**Privacidad:** este repositorio debe ser **privado**. Los registros de carteras y, con el modo real, tus
+operaciones y tu capital no deben ser públicos. Nunca se guardan credenciales en el repo.
+
 ## Agente investigador y redes sociales (Agent-Reach)
 
-El agente investigador está preparado para usar [Agent-Reach](https://github.com/Panniantong/Agent-Reach)
-(X/Twitter, Reddit, Exa, Jina, YouTube, RSS). **Todavía no está instalado:** el sistema de permisos de esta
-sesión bloqueó instalar código de terceros sin tu autorización explícita. Mientras tanto, el agente usa
-búsqueda web, lectura de páginas y RSS.
+El agente investigador usa [Agent-Reach](https://github.com/Panniantong/Agent-Reach), con tu autorización del
+28-09-2026.
 
-Si decides activarlo, te pediré:
+**Qué se instala:**
+- `scripts/setup_agent_reach.sh`, en cada ejecución (paso 0 de `agents/RUNBOOK.md`).
+- Agent-Reach v1.5.0, con el commit `f65526c` verificado.
+- twitter-cli 0.8.5, rdt-cli fijado y mcporter 0.14.1.
+- Todo en carpetas del usuario, sin `sudo`, sin `--system`, sin instalaciones globales y sin
+  actualizaciones automáticas.
 
-1. Tu autorización explícita para instalar Agent-Reach v1.5.0 (fijado al commit `f65526c`) y, con versión
-   fijada, twitter-cli 0.8.5, rdt-cli y mcporter. Todo sin `--system` ni sudo.
-2. **Cuentas secundarias** de X y Reddit creadas solo para esto, nunca las personales. Leer con cookies va
-   contra las condiciones de esas plataformas y la cuenta puede ser bloqueada.
-3. Añadir estas variables de entorno en la configuración del entorno cloud (menú del entorno en la barra de
-   título de la sesión → Editar). **Nunca las pegues en el chat.**
-   - `TWITTER_AUTH_TOKEN` y `TWITTER_CT0`: las cookies `auth_token` y `ct0` de x.com.
-   - `REDDIT_SESSION`: la cookie `reddit_session` de reddit.com.
+**Qué funciona:**
+- **Sin configurar nada:**
+  - Búsqueda web Exa.
+  - Lectura de artículos con Jina.
+  - RSS.
+- **X y Reddit necesitan cookies de cuentas secundarias**, creadas solo para esto, nunca las personales. Leer
+  con cookies va contra las condiciones de esas plataformas y la cuenta puede ser bloqueada.
+- **Solo lectura:** el agente tiene prohibido publicar, comentar, dar «me gusta» o seguir.
 
-   Se copian con la extensión *Cookie-Editor* del navegador (abre x.com o reddit.com con la cuenta
-   secundaria → Cookie-Editor → busca la cookie → copia su valor).
+**Para activar X y Reddit**, añade estas variables en la configuración del entorno cloud: menú del entorno en la
+barra de título de la sesión → *Edit*. **Nunca las pegues en el chat.**
+- `TWITTER_AUTH_TOKEN` y `TWITTER_CT0`: las cookies `auth_token` y `ct0` de x.com.
+- `REDDIT_SESSION`: la cookie `reddit_session` de reddit.com.
+
+Se copian con la extensión *Cookie-Editor* del navegador: abre x.com o reddit.com con la cuenta secundaria →
+Cookie-Editor → busca la cookie → copia su valor. Si no las añades, el agente anota «canal no disponible» y
+sigue con el resto de fuentes.
 
 ## Impuestos (España)
 
@@ -156,11 +211,12 @@ Si decides activarlo, te pediré:
 
 ```bash
 pip install -e ".[dev]"
-python -m trading scan          # escáner + carteras Q/RND + brief para los agentes
+python -m trading scan          # escáner + carteras Q/RND/V2C + brief para los agentes
 python -m trading decide        # aplica decisiones de los agentes y genera propuestas e informe
 python -m trading monitor       # vigilancia
 python -m trading weekly        # informe semanal
 python -m trading backtest --from 2021-01-01
+python -m trading research      # variantes pre-registradas (research/hypotheses.md)
 python -m trading status
 python -m pytest
 ```
@@ -168,7 +224,8 @@ python -m pytest
 | Ruta | Contenido |
 |---|---|
 | `src/trading/` | Datos, indicadores, puntuación, riesgo, simulación, backtest e informes |
-| `agents/` | Procedimiento de las Routines (`RUNBOOK.md`) y especificación de los agentes |
+| `agents/` | Cómo crear las Routines (`ROUTINES.md`), su procedimiento (`RUNBOOK.md`) y la especificación de los agentes |
+| `research/` | Hipótesis y criterios pre-registrados antes de cada investigación |
 | `runs/` | Todo lo que vio y decidió cada ejecución (auditable) |
 | `ledger/` | Operaciones y capital de cada cartera |
 | `reports/` | Informes diarios, semanales y del backtest |
