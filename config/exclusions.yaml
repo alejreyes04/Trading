@@ -1,0 +1,16 @@
+# Activos que nunca entran en el universo.
+# Stablecoins y monedas ligadas a fiat: no tienen tendencia que capturar.
+stablecoins: [USDT, USDC, FDUSD, TUSD, DAI, USDP, USDE, PYUSD, EURC, EURI, EURR, USD1,
+  RLUSD, BFUSD, XUSD, USDS, FRAX, LUSD, GUSD, BUSD, USDD, SUSD, UST, USTC, AEUR, EUR, GBP,
+  TRY, BRL, AUD, RUB, UAH, NGN, ZAR, JPY, IDRT, BIDR, BVND, U, USDQ, USDG, USD0, USDF, FXUSD]
+# Wrapped, staked y derivados: duplican la exposición a otra moneda.
+wrapped: [WBTC, WETH, WBETH, STETH, WSTETH, CBETH, RETH, BETH, CBBTC, TBTC, SOLVBTC, BNSOL,
+  JITOSOL, MSOL, BBSOL, WEETH, EZETH, RSETH, LBTC, WBNB, WSOL, WTRX, STRX, SAVAX, STSOL]
+# Oro tokenizado: no es cripto "de tendencia".
+commodities: [PAXG, XAUT]
+# Tokens apalancados de Binance (históricos): se detectan por sufijo sobre estas bases.
+leveraged_suffixes: [UP, DOWN, BULL, BEAR]
+leveraged_bases: [BTC, ETH, BNB, XRP, ADA, DOT, LINK, LTC, TRX, EOS, XTZ, YFI, SUSHI, 1INCH,
+  AAVE, UNI, FIL, SXP, BCH, XLM, AVAX]
+# Exclusiones manuales (añade aquí cualquier moneda que no quieras operar).
+manual: []

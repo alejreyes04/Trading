@@ -1,0 +1,119 @@
+# =============================================================================
+#  CONFIGURACIÓN DEL SISTEMA
+#  Puedes editar este archivo sin programar. Cada valor está explicado.
+#  Después de cambiar algo, la siguiente ejecución programada lo usará.
+# =============================================================================
+
+# --- Capital y etapas -------------------------------------------------------
+capital:
+  # Capital REAL con el que operas en Bitvavo para este sistema (en EUR).
+  # Etapa 1 recomendada: 500. Súbelo solo según los criterios del README.
+  live_eur: 500
+  # Capital con el que arrancan las carteras simuladas (Q, QL, RND).
+  # Igual que el real para que las cifras sean comparables.
+  paper_eur: 500
+  # Fecha desde la que se miden las carteras (se rellena en la primera ejecución).
+  start_date: null
+
+# --- Exchange de ejecución ---------------------------------------------------
+exchange:
+  name: bitvavo
+  quote: EUR
+  # Comisiones del tramo base de Bitvavo (en tanto por uno: 0.0025 = 0,25 %).
+  maker_fee: 0.0015
+  taker_fee: 0.0025
+  # Colchón sobre el precio de compra actual para la orden límite de entrada.
+  # 0.003 = puedes pagar hasta un 0,3 % más que el ask del momento del informe.
+  entry_limit_buffer: 0.003
+  # Margen del stop-limit: el límite se pone un 1 % por debajo del disparo
+  # para que se ejecute aunque el precio caiga deprisa.
+  stop_limit_offset: 0.01
+
+# --- Universo de monedas -----------------------------------------------------
+universe:
+  # Días mínimos de historial en Binance (evita monedas recién listadas).
+  min_history_days: 90
+  # Volumen diario mediano (30 días) mínimo en Binance, en USD.
+  min_binance_quote_volume_usd: 3000000
+  # Volumen mínimo en Bitvavo en las últimas 24 h, en EUR.
+  min_bitvavo_volume_eur: 25000
+  # Spread máximo en Bitvavo (en puntos básicos: 60 = 0,60 %).
+  max_bitvavo_spread_bps: 60
+  # Ratio máximo FDV / capitalización (dilución futura por desbloqueos).
+  max_fdv_mc_ratio: 4.0
+  # Diferencia máxima de precio Binance vs Bitvavo para aceptar que es la
+  # misma moneda (evita confundir tickers repetidos).
+  max_price_mismatch: 0.03
+
+# --- Señales y puntuación ----------------------------------------------------
+signals:
+  # Nº de candidatas que pasan al análisis de los agentes.
+  shortlist_size: 12
+  # Pesos de los bloques de la puntuación (fijados A PRIORI, no optimizados).
+  weights:
+    trend: 0.25          # momentum ajustado por volatilidad + calidad de tendencia
+    relative: 0.25       # fuerza relativa frente a BTC y cercanía a máximos
+    participation: 0.25  # volumen anómalo
+    entry_quality: 0.25  # penaliza comprar cuando el precio está muy estirado
+  # Filtros duros para aceptar una compra
+  max_overextension_atr: 3.0   # (precio - EMA20) / ATR máximo
+  max_rsi: 80
+  # Correlación máxima con una posición ya abierta (evita duplicar la apuesta)
+  max_correlation: 0.85
+
+# --- Plan de cada operación ---------------------------------------------------
+trade:
+  atr_period: 14
+  stop_atr: 2.0         # stop a 2 ATR por debajo de la entrada
+  take_profit_atr: 3.0  # objetivo a 3 ATR por encima (riesgo/beneficio 1:1,5)
+  max_holding_days: 10  # salida forzada a los 10 días
+  reentry_cooldown_days: 3  # días de espera para volver a entrar en una moneda
+
+# --- Límites de riesgo (el LLM NO puede saltárselos) --------------------------
+risk:
+  risk_per_trade: 0.01        # 1 % del capital arriesgado por operación
+  max_positions: 5
+  max_open_risk: 0.04         # suma del riesgo de todas las posiciones abiertas
+  max_position_weight: 0.25   # máximo 25 % del capital en una moneda
+  max_drawdown_pause: 0.15    # si el capital cae un 15 % desde su máximo, no se abren nuevas
+
+# --- Régimen de mercado ------------------------------------------------------
+regime:
+  # Riesgo alcista (risk_on): BTC sobre su media de 200 días Y >50 % del
+  # universo sobre su EMA50. Neutral: solo una de las dos. Risk-off: ninguna.
+  breadth_threshold: 0.5
+  multipliers:
+    risk_on: 1.0
+    neutral: 0.5
+    risk_off: 0.0   # en risk-off no se abren posiciones nuevas
+
+# --- Costes de ejecución simulados --------------------------------------------
+costs:
+  # Slippage por lado según liquidez (volumen diario mediano en Binance, USD)
+  slippage_high_liquidity: 0.0005   # >= 50 M$
+  slippage_mid_liquidity: 0.0010    # >= 10 M$
+  slippage_low_liquidity: 0.0020    # resto
+  stop_extra_slippage: 0.005        # un stop suele ejecutarse peor
+
+# --- Horarios (hora de Madrid) -----------------------------------------------
+schedule:
+  timezone: Europe/Madrid
+  main_run: "07:47"
+  monitor_runs: ["13:47", "20:47"]
+
+# --- Agente investigador ------------------------------------------------------
+research:
+  max_web_searches: 10
+  max_posts_per_coin: 30
+  rss_feeds:
+    - https://www.coindesk.com/arc/outboundfeeds/rss
+    - https://cointelegraph.com/rss
+    - https://decrypt.co/feed
+  fred_series: [DFF, DGS10, DTWEXBGS, VIXCLS]
+
+# --- Modo de operación --------------------------------------------------------
+# live_enabled: true  -> el informe incluye propuestas con dinero real.
+# live_enabled: false -> solo carteras simuladas (se usa si el backtest sale mal
+#                        o si decides pausar).
+mode:
+  live_enabled: true
