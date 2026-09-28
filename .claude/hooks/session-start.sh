@@ -9,3 +9,6 @@ fi
 
 cd "${CLAUDE_PROJECT_DIR:-$(pwd)}"
 python3 -m pip install --quiet --root-user-action=ignore -e ".[dev]"
+
+# Agent-Reach (autorizado por el usuario, versión fijada). Si falla, el sistema sigue sin él.
+bash scripts/setup_agent_reach.sh || echo "Agent-Reach no disponible en esta sesión" >&2

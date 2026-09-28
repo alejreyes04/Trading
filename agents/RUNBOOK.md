@@ -21,7 +21,12 @@ git fetch origin claude/inversion-trading-ai-system-rpedr3 claude/trading-runs |
 git checkout -B claude/trading-runs origin/claude/trading-runs && git merge --no-edit origin/claude/inversion-trading-ai-system-rpedr3 \
   || git checkout -B claude/trading-runs origin/claude/inversion-trading-ai-system-rpedr3
 python3 -m pip install -q -e ".[dev]"   # el hook suele haberlo hecho ya
+# Agent-Reach (autorizado por el usuario el 28-09-2026, versión fijada v1.5.0). Si no está instalado:
+command -v agent-reach >/dev/null || bash scripts/setup_agent_reach.sh || echo "sin Agent-Reach"
 ```
+
+Si la instalación de Agent-Reach falla o el sistema de permisos la bloquea, **no busques alternativas**:
+continúa con WebSearch/WebFetch y dilo en el mensaje final.
 
 ## A. Ejecución PRINCIPAL (mañana)
 
