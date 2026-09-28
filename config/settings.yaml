@@ -116,5 +116,9 @@ research:
 # live_enabled: true  -> el informe incluye propuestas con dinero real.
 # live_enabled: false -> solo carteras simuladas (se usa si el backtest sale mal
 #                        o si decides pausar).
+# DESACTIVADO el 28/09/2026: el backtest de la v1 (2021-2026) salió negativo tras
+# costes (R medio -0,036, IC 95 % [-0,10, +0,03]; peor que el 81 % de las carteras
+# aleatorias). Ver reports/backtest_2026-09-28.md. Cámbialo a true solo si decides
+# operar igualmente sabiendo esto.
 mode:
-  live_enabled: true
+  live_enabled: false

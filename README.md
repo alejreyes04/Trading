@@ -14,11 +14,41 @@ Sistema semiautomático: **analiza, propone y lleva la cuenta; tú ejecutas**.
 
 ---
 
+## Resultado del backtest y estado actual: SOLO SIMULACIÓN
+
+Antes de arriesgar dinero probé la parte cuantitativa con 5,7 años de histórico diario de Binance
+(2021 → sep-2026, 644 pares USDT, **incluidos los ya retirados**). Usé las mismas reglas, los costes de
+Bitvavo y el mismo motor de riesgo que el sistema real. Informe completo: `reports/backtest_2026-09-28.md`.
+
+| Serie | Rentabilidad total | Sharpe | Caída máxima |
+|---|---|---|---|
+| **Estrategia v1 (Q)** | **−14,2 %** | −0,16 | −39,7 % |
+| Carteras aleatorias con las mismas reglas (mediana de 100) | −2,6 % | 0,03 | — |
+| BTC comprar y mantener | +188,0 % | 0,61 | −76,6 % |
+| Cesta top-20 de altcoins igual ponderada | −37,8 % | 0,32 | −92,9 % |
+
+- **808 operaciones:**
+  - Aciertos: 40,6 %, justo lo que daría el azar con stop a 2 ATR y objetivo a 3 ATR.
+  - R medio: −0,036, con un intervalo de confianza al 95 % entre −0,10 y +0,03, es decir, **sin
+    evidencia de ventaja**.
+  - Comisiones: se llevaron el 13,9 % del capital inicial.
+- **La selección no aporta valor:** elegir monedas al azar con las mismas reglas habría dado un resultado
+  igual o mejor. La estrategia queda en el percentil 19.
+- **Conclusión honesta:** comprar las altcoins con más momentum para venderlas en 2–10 días **no funcionó**
+  en este periodo, ni siquiera con riesgo controlado. Por eso `mode.live_enabled` está en `false`.
+- **Qué sigue funcionando:** el sistema opera en **simulación** (Q, QL y RND) para acumular datos reales hacia
+  delante y medir si el agente de IA aporta algo. Puedes activar el modo real editando
+  `config/settings.yaml`, pero sería en contra de esta evidencia.
+- Registro de variantes probadas en `reports/experiments.csv`. La primera ejecución está marcada como
+  inválida por un error de programación que ya está corregido.
+
+---
+
 ## Cómo funciona (cada día, sin que tengas que programar nada)
 
 | Hora (Madrid) | Qué ocurre | Te llega |
 |---|---|---|
-| ~07:47 | **Ejecución principal:** escáner cuant → agente investigador → agente trader → motor de riesgo | Notificación con las compras propuestas + informe en `reports/` |
+| ~07:47 | **Ejecución principal:** escáner cuant → agente investigador → agente trader → motor de riesgo | Notificación con las compras propuestas (simuladas mientras el modo real esté desactivado) + informe en `reports/` |
 | ~13:47 y ~20:47 | **Vigilancia:** stops u objetivos alcanzados, órdenes caducadas, salidas por tiempo, noticias sobre tus posiciones | Notificación solo si hay algo que hacer |
 
 Por dentro:

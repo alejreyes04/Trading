@@ -1,0 +1,206 @@
+{
+  "period": [
+    "2021-01-01",
+    "2026-09-28"
+  ],
+  "n_days": 2096,
+  "n_symbols_seen": 644,
+  "settings": {
+    "capital": {
+      "live_eur": 500.0,
+      "paper_eur": 500.0,
+      "start_date": null
+    },
+    "exchange": {
+      "name": "bitvavo",
+      "quote": "EUR",
+      "maker_fee": 0.0015,
+      "taker_fee": 0.0025,
+      "entry_limit_buffer": 0.003,
+      "stop_limit_offset": 0.01
+    },
+    "universe": {
+      "min_history_days": 90,
+      "min_binance_quote_volume_usd": 3000000.0,
+      "min_bitvavo_volume_eur": 25000.0,
+      "max_bitvavo_spread_bps": 60.0,
+      "max_fdv_mc_ratio": 4.0,
+      "max_price_mismatch": 0.03
+    },
+    "signals": {
+      "shortlist_size": 12,
+      "weights": {
+        "trend": 0.25,
+        "relative": 0.25,
+        "participation": 0.25,
+        "entry_quality": 0.25
+      },
+      "max_overextension_atr": 3.0,
+      "max_rsi": 80.0,
+      "max_correlation": 0.85
+    },
+    "trade": {
+      "atr_period": 14,
+      "stop_atr": 2.0,
+      "take_profit_atr": 3.0,
+      "max_holding_days": 10,
+      "reentry_cooldown_days": 3
+    },
+    "risk": {
+      "risk_per_trade": 0.01,
+      "max_positions": 5,
+      "max_open_risk": 0.04,
+      "max_position_weight": 0.25,
+      "max_drawdown_pause": 0.15,
+      "drawdown_pause_days": 14
+    },
+    "regime": {
+      "breadth_threshold": 0.5,
+      "multipliers": {
+        "risk_on": 1.0,
+        "neutral": 0.5,
+        "risk_off": 0.0
+      }
+    },
+    "costs": {
+      "slippage_high_liquidity": 0.0005,
+      "slippage_mid_liquidity": 0.001,
+      "slippage_low_liquidity": 0.002,
+      "stop_extra_slippage": 0.005
+    },
+    "schedule": {
+      "timezone": "Europe/Madrid",
+      "main_run": "07:47",
+      "monitor_runs": [
+        "13:47",
+        "20:47"
+      ]
+    },
+    "research": {
+      "max_web_searches": 10,
+      "max_posts_per_coin": 30,
+      "rss_feeds": [
+        "https://www.coindesk.com/arc/outboundfeeds/rss",
+        "https://cointelegraph.com/rss",
+        "https://decrypt.co/feed"
+      ],
+      "fred_series": [
+        "DFF",
+        "DGS10",
+        "DTWEXBGS",
+        "VIXCLS"
+      ]
+    },
+    "mode": {
+      "live_enabled": true
+    }
+  },
+  "strategy": {
+    "total_return": -0.14198884481996255,
+    "cagr": -0.02634541409788349,
+    "vol_ann": 0.12164076179485575,
+    "sharpe": -0.15846721225190977,
+    "sortino": -0.18022804013544155,
+    "max_drawdown": -0.3965454613636039,
+    "n_trades": 808,
+    "win_rate": 0.40594059405940597,
+    "avg_r": -0.03606506039946688,
+    "avg_r_ci95": [
+      -0.10344319235564789,
+      0.033052489337225516
+    ],
+    "profit_factor": 0.9397825355412802,
+    "avg_bars": 7.101485148514851,
+    "fees_pct_capital": 0.13948573656513374,
+    "exposure": 0.6412213740458015,
+    "psr_vs_0": 0.3520118996548558,
+    "exits": {
+      "tiempo": 354,
+      "stop": 259,
+      "objetivo": 193,
+      "retirada": 2
+    }
+  },
+  "benchmarks": {
+    "BTC comprar y mantener": {
+      "total_return": 1.8798886119415554,
+      "cagr": 0.20251152191399613,
+      "vol_ann": 0.5715432745902015,
+      "sharpe": 0.6077927874524262,
+      "sortino": 0.8699777450668924,
+      "max_drawdown": -0.7662925431645934
+    },
+    "Cesta top-20 igual ponderada": {
+      "total_return": -0.3780162678242279,
+      "cagr": -0.07945149413342911,
+      "vol_ann": 0.8196826251078849,
+      "sharpe": 0.31629009271457303,
+      "sortino": 0.42990180980580495,
+      "max_drawdown": -0.9285916515053533
+    }
+  },
+  "random": {
+    "runs": 100,
+    "total_return_median": -0.025851035048242488,
+    "total_return_p5": -0.2156493367543641,
+    "total_return_p95": 0.24589916980402368,
+    "sharpe_median": 0.025395743956265704,
+    "avg_r_median": -0.028759608341882018,
+    "strategy_pct_rank_total_return": 0.19,
+    "strategy_pct_rank_sharpe": 0.18,
+    "strategy_pct_rank_avg_r": 0.41
+  },
+  "yearly": {
+    "Q (estrategia)": {
+      "2021": 0.14424856641622474,
+      "2022": -0.049799016912464356,
+      "2023": -0.06753511327582573,
+      "2024": -0.19024226751749929,
+      "2025": -0.07636320783738615,
+      "2026": 0.1090977028019664
+    },
+    "BTC comprar y mantener": {
+      "2021": 0.5756654321656884,
+      "2022": -0.6533637591374326,
+      "2023": 1.5446359847743993,
+      "2024": 1.118084045672715,
+      "2025": -0.07340563065779804,
+      "2026": -0.04915676711499806
+    },
+    "Cesta top-20 igual ponderada": {
+      "2021": 2.4049855720220963,
+      "2022": -0.8444382720110497,
+      "2023": 0.9573078479757311,
+      "2024": 0.10814177890473586,
+      "2025": -0.5731407591395687,
+      "2026": 0.06176281927702987
+    },
+    "RND (mediana)": {
+      "2021": 0.2612980589368241,
+      "2022": -0.02323942732967821,
+      "2023": 0.032745106356430576,
+      "2024": -0.12174936433898476,
+      "2025": -0.18397958713941653,
+      "2026": 0.04761819500138387
+    }
+  },
+  "by_regime": {
+    "neutral": {
+      "n": 494,
+      "avg_r": -0.07167717914171344,
+      "win_rate": 0.3866396761133603
+    },
+    "risk_on": {
+      "n": 314,
+      "avg_r": 0.01996164870457706,
+      "win_rate": 0.43630573248407645
+    }
+  },
+  "regime_days": {
+    "risk_off": 0.4041030534351145,
+    "neutral": 0.2981870229007634,
+    "risk_on": 0.29770992366412213
+  },
+  "variants_tested": 1,
+  "runtime_s": 1402.7
+}
