@@ -68,9 +68,9 @@ def plan_entries(candidates: list[Candidate], ledger: Ledger, capital: float, ma
     if regime_multiplier <= 0:
         plan.blocked_reason = "régimen risk-off: no se abren posiciones nuevas"
         return plan
-    if peak > 0 and equity < peak * (1 - r.max_drawdown_pause):
-        plan.blocked_reason = (f"caída desde máximos {equity / peak - 1:.1%} supera el límite "
-                               f"({r.max_drawdown_pause:.0%}): pausa de entradas")
+    blocked = drawdown_gate(ledger, equity, peak, now, settings)
+    if blocked:
+        plan.blocked_reason = blocked
         return plan
 
     open_trades = ledger.open_trades()
@@ -129,6 +129,23 @@ def plan_entries(candidates: list[Candidate], ledger: Ledger, capital: float, ma
         held.add(c.base)
         held_symbols.append(c.binance_symbol)
     return plan
+
+
+def drawdown_gate(ledger, equity: float, peak: float, now: datetime, settings: Settings) -> str | None:
+    """Pausa temporal de entradas tras una caída fuerte; al terminar, el máximo de referencia se reinicia."""
+    r = settings.risk
+    until = ledger.pause_until()
+    if until is not None:
+        if now < until:
+            return f"pausa por caída desde máximos hasta el {until:%d/%m/%Y}"
+        ledger.reset_peak(equity, now)
+        return None
+    if peak > 0 and equity < peak * (1 - r.max_drawdown_pause):
+        until = now + timedelta(days=r.drawdown_pause_days)
+        ledger.start_pause(until)
+        return (f"caída desde máximos {equity / peak - 1:.1%} supera el límite ({r.max_drawdown_pause:.0%}): "
+                f"pausa de entradas {r.drawdown_pause_days} días")
+    return None
 
 
 def _corr(returns: pd.DataFrame, a: str, b: str, window: int = 60) -> float:

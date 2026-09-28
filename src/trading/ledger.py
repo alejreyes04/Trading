@@ -80,7 +80,9 @@ class Ledger:
         self.dir = root / portfolio
         self.trades_path = self.dir / "trades.csv"
         self.equity_path = self.dir / "equity.csv"
+        self.state_path = self.dir / "state.json"
         self.trades: list[Trade] = self._load()
+        self.state: dict = json.loads(self.state_path.read_text()) if self.state_path.exists() else {}
 
     def _load(self) -> list[Trade]:
         if not self.trades_path.exists():
@@ -102,6 +104,8 @@ class Ledger:
         self.dir.mkdir(parents=True, exist_ok=True)
         df = pd.DataFrame([asdict(t) for t in self.trades], columns=FIELDS)
         df.to_csv(self.trades_path, index=False)
+        if self.state:
+            self.state_path.write_text(json.dumps(self.state, indent=2))
 
     # --- consultas -----------------------------------------------------------
     def open_trades(self) -> list[Trade]:
@@ -131,10 +135,25 @@ class Ledger:
         return sum(t.risk_eur for t in self.open_trades())
 
     def peak_equity(self, capital: float) -> float:
+        """Máximo de capital desde el último reinicio (tras una pausa por drawdown)."""
+        baseline = float(self.state.get("peak_baseline", capital))
         if not self.equity_path.exists():
-            return capital
+            return baseline
         df = pd.read_csv(self.equity_path)
-        return float(max(capital, df["equity"].max())) if not df.empty else capital
+        if self.state.get("peak_reset_at"):
+            df = df[df["time"] >= self.state["peak_reset_at"]]
+        return float(max(baseline, df["equity"].max())) if not df.empty else baseline
+
+    # --- pausa por drawdown (interfaz común con el Book del backtest) ---
+    def pause_until(self) -> datetime | None:
+        v = self.state.get("pause_until")
+        return datetime.fromisoformat(v) if v else None
+
+    def start_pause(self, until: datetime) -> None:
+        self.state["pause_until"] = until.isoformat()
+
+    def reset_peak(self, equity: float, now: datetime) -> None:
+        self.state.update({"pause_until": None, "peak_reset_at": now.isoformat(), "peak_baseline": equity})
 
     def last_closed_at(self, base: str) -> str | None:
         closed = [t.closed_at for t in self.closed_trades() if t.base == base and t.closed_at]

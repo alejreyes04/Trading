@@ -78,3 +78,19 @@ def test_min_order_rejected(tmp_path, settings):
     c.rules = rules
     plan = plan_entries([c], led, 500, {}, 1.0, settings, None, NOW)
     assert not plan.entries and "mínimo" in plan.rejected[0][1]
+
+
+def test_drawdown_pause_is_temporary(tmp_path, settings):
+    led = Ledger("Q", root=tmp_path)
+    led.dir.mkdir(parents=True)
+    pd.DataFrame([{"time": "2026-09-01T00:00:00+00:00", "run_id": "r", "equity": 1000, "cash": 0, "open_risk": 0,
+                   "n_open": 0, "n_pending": 0}]).to_csv(led.equity_path, index=False)
+    first = plan_entries([cand("A")], led, 500, {}, 1.0, settings, None, NOW)
+    assert "pausa" in first.blocked_reason
+    during = plan_entries([cand("A")], led, 500, {}, 1.0, settings, None, NOW + timedelta(days=5))
+    assert "hasta" in during.blocked_reason
+    after = plan_entries([cand("A")], led, 500, {}, 1.0, settings, None,
+                         NOW + timedelta(days=settings.risk.drawdown_pause_days + 1))
+    assert after.blocked_reason is None and after.entries      # el máximo se reinicia y se vuelve a operar
+    led.save()
+    assert Ledger("Q", root=tmp_path).state["peak_baseline"] == 500

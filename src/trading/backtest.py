@@ -63,6 +63,8 @@ class Book:
     peak: float = 0.0
     last_exit: dict[str, str] = field(default_factory=dict)
     fees: float = 0.0
+    paused_until: datetime | None = None
+    pause_days: int = 0
 
     def __post_init__(self):
         self.cash_ = self.capital
@@ -87,6 +89,17 @@ class Book:
 
     def last_closed_at(self, base: str) -> str | None:
         return self.last_exit.get(base)
+
+    def pause_until(self) -> datetime | None:
+        return self.paused_until
+
+    def start_pause(self, until: datetime) -> None:
+        self.paused_until = until
+        self.pause_days += 1
+
+    def reset_peak(self, equity: float, now: datetime) -> None:
+        self.paused_until = None
+        self.peak = equity
 
     # --- operaciones ---
     def close(self, p: Pos, date: pd.Timestamp, price: float, reason: str, fee_rate: float) -> None:
@@ -204,7 +217,7 @@ def simulate(pre: dict, panel: features.Panel, settings: Settings, mode: str = "
 
     eq = pd.Series(dict(curve))
     return {"equity": eq, "trades": pd.DataFrame(book.trades), "fees": book.fees,
-            "exposure": exposure_days / max(len(dates), 1)}
+            "exposure": exposure_days / max(len(dates), 1), "pauses": book.pause_days}
 
 
 def benchmarks(pre: dict, panel: features.Panel, settings: Settings) -> dict[str, pd.Series]:

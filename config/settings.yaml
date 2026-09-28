@@ -75,7 +75,8 @@ risk:
   max_positions: 5
   max_open_risk: 0.04         # suma del riesgo de todas las posiciones abiertas
   max_position_weight: 0.25   # máximo 25 % del capital en una moneda
-  max_drawdown_pause: 0.15    # si el capital cae un 15 % desde su máximo, no se abren nuevas
+  max_drawdown_pause: 0.15    # si el capital cae un 15 % desde su máximo, se pausan las entradas...
+  drawdown_pause_days: 14     # ...durante 14 días; después el máximo de referencia se reinicia
 
 # --- Régimen de mercado ------------------------------------------------------
 regime:

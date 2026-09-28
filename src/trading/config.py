@@ -64,6 +64,7 @@ class Risk(BaseModel):
     max_open_risk: float
     max_position_weight: float
     max_drawdown_pause: float
+    drawdown_pause_days: int = 14
 
 
 class Regime(BaseModel):
